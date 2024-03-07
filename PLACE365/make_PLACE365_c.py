@@ -293,7 +293,7 @@ def fgsm(x, source_net, severity=1):
 def gaussian_blur(x, severity=1):
     c = [1, 2, 3, 4, 6][severity - 1]
 
-    x = gaussian(np.array(x) / 255., sigma=c, multichannel=True)
+    x = gaussian(np.array(x) / 255., sigma=c)
     return np.clip(x, 0, 1) * 255
 
 
@@ -301,7 +301,7 @@ def glass_blur(x, severity=1):
     # sigma, max_delta, iterations
     c = [(0.7, 1, 2), (0.9, 2, 1), (1, 2, 3), (1.1, 3, 2), (1.5, 4, 2)][severity - 1]
 
-    x = np.uint8(gaussian(np.array(x) / 255., sigma=c[0], multichannel=True) * 255)
+    x = np.uint8(gaussian(np.array(x) / 255., sigma=c[0]) * 255)
 
     # locally shuffle pixels
     for i in range(c[2]):
@@ -312,7 +312,7 @@ def glass_blur(x, severity=1):
                 # swap
                 x[h, w], x[h_prime, w_prime] = x[h_prime, w_prime], x[h, w]
 
-    return np.clip(gaussian(x / 255., sigma=c[0], multichannel=True), 0, 1) * 255
+    return np.clip(gaussian(x / 255., sigma=c[0]), 0, 1) * 255
 
 
 def defocus_blur(x, severity=1):
@@ -541,7 +541,7 @@ def pixelate(x, severity=1):
 
 # mod of https://gist.github.com/erniejunior/601cdf56d2b424757de5
 def elastic_transform(image, severity=1):
-    c = [(244 * 2, 244 * 0.7, 244 * 0.1),   # 244 should have been 224, but ultimately nothing is incorrect
+    c = [(244 * 2, 244 * 0.7, 244 * 0.1),  # 244 should have been 224, but ultimately nothing is incorrect
          (244 * 2, 244 * 0.08, 244 * 0.2),
          (244 * 0.05, 244 * 0.01, 244 * 0.02),
          (244 * 0.07, 244 * 0.01, 244 * 0.02),
@@ -593,34 +593,58 @@ def save_distorted(method=gaussian_noise):
 
 # /////////////// End Further Setup ///////////////
 
+corruption_dict = {'gaussian_noise': gaussian_noise, 'shot_noise': shot_noise, 'impulse_noise': impulse_noise,
+                   'defocus_blur': defocus_blur, 'glass_blur': glass_blur,
+                   'zoom_blur': zoom_blur, 'frost': frost, 'fog': fog, 'brightness': brightness,
+                   'contrast': contrast, 'elastic_transform': elastic_transform, 'pixelate': pixelate,
+                   'jpeg_compression': jpeg_compression, 'speckle_noise': speckle_noise, 'gaussian_blur': gaussian_blur,
+                   'spatter': spatter, 'saturate': saturate, 'snow': snow,
+                   'motion_blur': motion_blur}
+
+
+class PLACE365_C(ImageFolder):
+    base_folder = 'PLACES365'
+
+    def __init__(
+            self, root: str, transform: Optional[Callable] = None, domain=None, output_dir=None, level=5, **kwargs
+    ) -> None:
+        self.root = os.path.expanduser(root)
+        self.dataset_folder = os.path.join(self.root, self.base_folder)
+        self.domain = domain
+        self.level = level
+        self.output_dir = os.path.join(output_dir, self.domain, str(self.level))
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir)
+        super().__init__(self.dataset_folder, transform=transform, **kwargs)
+        self.method = corruption_dict[self.domain]
+        self.method_name = self.method.__name__
+
+    def __getitem__(self, index):
+        path, target = self.samples[index]
+        sample = self.loader(path)
+        img_corrupted = transforms.Resize((224, 224))(sample)
+        img_corrupted = self.method(img_corrupted, self.level)
+        img_corrupted = PILImage.fromarray(np.uint8(img_corrupted))
+        assert img_corrupted.size == (224, 224)
+        # img_corrupted = transforms.Resize((32, 32))(img_corrupted)
+        output_path = os.path.join(self.output_dir, os.path.relpath(path, self.dataset_folder))
+        if not os.path.exists(os.path.dirname(output_path)):
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        img_corrupted.save(output_path)
+        if self.transform is not None:
+            img_corrupted = self.transform(img_corrupted)
+        return img_corrupted, target
 
 
 # /////////////// Display Results ///////////////
-import collections
-
-print('\nUsing ImageNet data')
-
-d = collections.OrderedDict()
-d['Gaussian Noise'] = gaussian_noise
-d['Shot Noise'] = shot_noise
-d['Impulse Noise'] = impulse_noise
-d['Defocus Blur'] = defocus_blur
-d['Glass Blur'] = glass_blur
-d['Motion Blur'] = motion_blur
-d['Zoom Blur'] = zoom_blur
-d['Snow'] = snow
-d['Frost'] = frost
-d['Fog'] = fog
-d['Brightness'] = brightness
-d['Contrast'] = contrast
-d['Elastic'] = elastic_transform
-d['Pixelate'] = pixelate
-d['JPEG'] = jpeg_compression
-
-d['Speckle Noise'] = speckle_noise
-d['Gaussian Blur'] = gaussian_blur
-d['Spatter'] = spatter
-d['Saturate'] = saturate
-
-for method_name in d.keys():
-    save_distorted(d[method_name])
+if __name__ == '__main__':
+    root = '/data2/yongcan.yu/datasets'
+    for level in range(5, 0, -1):
+        for domain in corruption_dict.keys():
+            dataset = PLACE365_C(root, domain=domain, level=level, output_dir='/data2/yongcan.yu/datasets/PLACES365-C',
+                                 transform=transforms.ToTensor())
+            data_loader = torch.utils.data.DataLoader(dataset, batch_size=16, shuffle=True, num_workers=64)
+            for i, (img, target) in enumerate(data_loader):
+                if i % 5 == 0:
+                    print('domain: {}, level: {}, batch: {}/{}'.format(domain, level, i,
+                                                                       len(data_loader)))

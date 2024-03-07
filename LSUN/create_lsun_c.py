@@ -3,7 +3,7 @@ import torch
 import torchvision
 from torchvision.datasets import SVHN
 # from corruptions_32 import *
-from corruptions_224 import *
+from corruption32 import *
 import os
 import scipy.io as sio
 import torchvision.transforms as transforms
@@ -12,15 +12,15 @@ import random
 from typing import Callable, Optional
 import shutil
 
-# corruption_dict = {'gaussian_noise': gaussian_noise, 'shot_noise': shot_noise, 'impulse_noise': impulse_noise,
-#                    'defocus_blur': defocus_blur, 'glass_blur': glass_blur,
-#                    'zoom_blur': zoom_blur, 'frost': frost, 'fog': fog, 'brightness': brightness,
-#                    'contrast': contrast, 'elastic_transform': elastic_transform, 'pixelate': pixelate,
-#                    'jpeg_compression': jpeg_compression, 'speckle_noise': speckle_noise, 'gaussian_blur': gaussian_blur,
-#                    'spatter': spatter, 'saturate': saturate,'snow': snow,
-#                    'motion_blur': motion_blur}
-corruption_dict = {'snow': snow,
+corruption_dict = {'gaussian_noise': gaussian_noise, 'shot_noise': shot_noise, 'impulse_noise': impulse_noise,
+                   'defocus_blur': defocus_blur, 'glass_blur': glass_blur,
+                   'zoom_blur': zoom_blur, 'frost': frost, 'fog': fog, 'brightness': brightness,
+                   'contrast': contrast, 'elastic_transform': elastic_transform, 'pixelate': pixelate,
+                   'jpeg_compression': jpeg_compression, 'speckle_noise': speckle_noise, 'gaussian_blur': gaussian_blur,
+                   'spatter': spatter, 'saturate': saturate,'snow': snow,
                    'motion_blur': motion_blur}
+# corruption_dict = {'snow': snow,
+#                    'motion_blur': motion_blur}
 
 random.seed(2023)
 np.random.seed(2023)
@@ -50,10 +50,10 @@ class LSUN_C(ImageFolder):
         path, target = self.samples[index]
         sample = self.loader(path)
 
-        img_corrupted = transforms.Resize((224, 224))(sample)
-        img_corrupted = self.method(img_corrupted, self.level)
+        # img_corrupted = transforms.Resize((224, 224))(sample)
+        img_corrupted = self.method(sample, self.level)
         img_corrupted = PILImage.fromarray(np.uint8(img_corrupted))  #
-        img_corrupted = transforms.Resize((32, 32))(img_corrupted)
+        # img_corrupted = transforms.Resize((32, 32))(img_corrupted)
         self.output_path = os.path.join(self.output_dir, os.path.basename(path))
         img_corrupted.save(self.output_path)
         if self.transform is not None:

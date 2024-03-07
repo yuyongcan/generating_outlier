@@ -3,7 +3,7 @@ import torch
 import torchvision
 from torchvision.datasets import SVHN
 # from corruptions_32 import *
-from corruptions_224 import *
+from corruption32 import *
 import os
 import scipy.io as sio
 import torchvision.transforms as transforms
@@ -72,10 +72,8 @@ class SVHN_C(SVHN):
             img_i = self.transform(img_i)
         img_corrupted = np.transpose(img_i, (1, 2, 0))
         img_corrupted = PILImage.fromarray(img_corrupted)  #
-        img_corrupted = transforms.Resize((224, 224))(img_corrupted)
         img_corrupted = self.method(img_corrupted, self.level)
         img_corrupted = PILImage.fromarray(np.uint8(img_corrupted))  #
-        img_corrupted = transforms.Resize((32, 32))(img_corrupted)
         img_corrupted = np.array(img_corrupted)  #
         img_corrupted = np.transpose(img_corrupted, (2, 0, 1))
         img_corrupted.dump('./temp_static/{}.npy'.format(index))

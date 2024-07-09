@@ -16,14 +16,7 @@ corruption_dict = {'gaussian_noise': gaussian_noise, 'shot_noise': shot_noise, '
                    'jpeg_compression': jpeg_compression, 'speckle_noise': speckle_noise, 'gaussian_blur': gaussian_blur,
                    'spatter': spatter, 'saturate': saturate,'snow': snow,
                    'motion_blur': motion_blur}
-# corruption_dict = {}
 
-# corruption_tuple = (gaussian_noise, shot_noise, impulse_noise, defocus_blur,
-#                     glass_blur, motion_blur, zoom_blur, snow, frost, fog,
-#                     brightness, contrast, elastic_transform, pixelate, jpeg_compression,
-#                     speckle_noise, gaussian_blur, spatter, saturate)
-#
-# corruption_dict = {corr_func.__name__: corr_func for corr_func in corruption_tuple}
 random.seed(2023)
 np.random.seed(2023)
 torch.manual_seed(2023)
